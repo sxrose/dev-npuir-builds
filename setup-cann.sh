@@ -6,7 +6,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE="${IMAGE:-ascendnpu-ir-ubuntu20-builder}"
 
 CANN_HOME="${CANN_HOME-$REPO_DIR/../cann}"
-CANN_URL="${CANN_URL:-https://ascend-cann-open.obs.cn-north-4.myhuaweicloud.com/CANN/CANN-9.0.0-A5/Ascend-cann_9.0.0_linux-x86_64.run}"
+CANN_URL="${CANN_URL:-https://ascend-cann-open.obs.cn-north-4.myhuaweicloud.com/CANN/CANN%209.2.0-beta.2/Ascend-cann_9.2.0-beta.2_linux-x86_64.run}"
 CANN_SHA256="${CANN_SHA256:-}"
 
 CANN_HOME="$(realpath -m "$CANN_HOME")"
