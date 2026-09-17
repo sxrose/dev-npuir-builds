@@ -39,6 +39,10 @@ LLD 18 and `mold` are used for both AscendNPU-IR and Triton-Ascend builds.
 Python 3.10 is installed because Triton-Ascend supports Python 3.9 to 3.11,
 while the default Ubuntu 20 Python is 3.8.
 
+`mold` is not packaged for Ubuntu 20.04, so the official release tarball is
+downloaded and verified against a pinned SHA256 (`MOLD_VERSION`/`MOLD_SHA256`
+build args). Bump both together when upgrading.
+
 ```bash
 ./build-image.sh
 ```
