@@ -52,6 +52,11 @@ docker_args=(
   --volume "$CANN_HOME:$CANN_CONTAINER_PATH"
   --volume "$IR_ROOT:/workspace/AscendNPU-IR"
   --volume "$TRITON_ROOT:/workspace/triton-ascend"
+  # Mount the scripts over the baked copies so edits take effect without
+  # rebuilding the image.
+  --volume "$REPO_DIR/scripts/build-compiler.sh:/usr/local/bin/build-compiler.sh:ro"
+  --volume "$REPO_DIR/scripts/build-wheel.sh:/usr/local/bin/build-wheel.sh:ro"
+  --volume "$REPO_DIR/scripts/pack-compiler.sh:/usr/local/bin/pack-compiler.sh:ro"
   --workdir /workspace/AscendNPU-IR
 )
 
