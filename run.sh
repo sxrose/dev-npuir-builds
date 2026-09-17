@@ -7,12 +7,17 @@ IMAGE="${IMAGE:-ascendnpu-ir-ubuntu20-builder}"
 
 IR_ROOT="${IR_ROOT:-$REPO_DIR/../AscendNPU-IR}"
 TRITON_ROOT="${TRITON_ROOT:-$REPO_DIR/../triton-ascend}"
+LLVM_SRC="${LLVM_SRC:-$REPO_DIR/../llvm-project}"
+LLVM_INSTALL="${LLVM_INSTALL:-$REPO_DIR/../llvm-install}"
 CANN_HOME="${CANN_HOME-$REPO_DIR/../cann}"
 CACHE_HOME="${CACHE_HOME-$HOME/.cache/dev-npuir-builds}"
 
 IR_ROOT="$(realpath "$IR_ROOT")"
 TRITON_ROOT="$(realpath "$TRITON_ROOT")"
 CANN_HOME="$(realpath -m "$CANN_HOME")"
+LLVM_SRC="$(realpath -m "$LLVM_SRC")"
+LLVM_INSTALL="$(realpath -m "$LLVM_INSTALL")"
+mkdir -p "$LLVM_SRC" "$LLVM_INSTALL"
 
 [[ -d "$IR_ROOT" ]] || {
   printf 'AscendNPU-IR checkout not found: %s\n' "$IR_ROOT" >&2
@@ -49,12 +54,17 @@ docker_args=(
   --env LD_LIBRARY_PATH="$CANN_CONTAINER_PATH/lib64"
   --env IR_ROOT=/workspace/AscendNPU-IR
   --env TRITON_ROOT=/workspace/triton-ascend
+  --env LLVM_SRC=/workspace/llvm-project
+  --env LLVM_INSTALL=/workspace/llvm-install
   --volume "$CANN_HOME:$CANN_CONTAINER_PATH"
   --volume "$IR_ROOT:/workspace/AscendNPU-IR"
   --volume "$TRITON_ROOT:/workspace/triton-ascend"
+  --volume "$LLVM_SRC:/workspace/llvm-project"
+  --volume "$LLVM_INSTALL:/workspace/llvm-install"
   # Mount the scripts over the baked copies so edits take effect without
   # rebuilding the image.
   --volume "$REPO_DIR/scripts/build-compiler.sh:/usr/local/bin/build-compiler.sh:ro"
+  --volume "$REPO_DIR/scripts/build-llvm.sh:/usr/local/bin/build-llvm.sh:ro"
   --volume "$REPO_DIR/scripts/build-wheel.sh:/usr/local/bin/build-wheel.sh:ro"
   --volume "$REPO_DIR/scripts/pack-compiler.sh:/usr/local/bin/pack-compiler.sh:ro"
   --workdir /workspace/AscendNPU-IR

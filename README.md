@@ -16,6 +16,7 @@ dev-npuir-builds/
   setup-cann.sh           # install CANN into a host directory (non-root)
   run.sh                  # run a command / shell inside the image
   scripts/                # copied into the image as /usr/local/bin/*
+    build-llvm.sh
     build-compiler.sh
     build-wheel.sh
     pack-compiler.sh
@@ -87,6 +88,7 @@ Start an interactive shell with both checkouts mounted:
 Inside the container these aliases are available:
 
 ```text
+build-llvm      # build the upstream LLVM 22 required by Triton-Ascend
 build-compiler  # build AscendNPU-IR and the template library
 build-wheel     # build a Triton-Ascend wheel
 pack-compiler   # create a .tar.zst with bishengir-compile and *.bc
@@ -95,6 +97,7 @@ pack-compiler   # create a .tar.zst with bishengir-compile and *.bc
 Or run a single command without an interactive shell:
 
 ```bash
+./run.sh build-llvm.sh
 ./run.sh build-compiler.sh --build-type Release
 ./run.sh build-wheel.sh
 ./run.sh pack-compiler.sh
@@ -116,6 +119,8 @@ TRITON_ROOT=/path/to/triton-ascend \
 | `IMAGE` | `ascendnpu-ir-ubuntu20-builder` | Image tag used by all scripts |
 | `IR_ROOT` | `../AscendNPU-IR` | AscendNPU-IR checkout mounted at `/workspace/AscendNPU-IR` |
 | `TRITON_ROOT` | `../triton-ascend` | Triton-Ascend checkout mounted at `/workspace/triton-ascend` |
+| `LLVM_SRC` | `../llvm-project` | Upstream LLVM checkout mounted at `/workspace/llvm-project` |
+| `LLVM_INSTALL` | `../llvm-install` | Upstream LLVM install mounted at `/workspace/llvm-install` |
 | `CANN_HOME` | `../cann` | CANN home mounted at `/opt/Ascend/cann` |
 | `CANN_URL` | CANN 9.0.0 A5 `.run` | Installer URL used by `setup-cann.sh` |
 | `CANN_SHA256` | empty | Optional SHA256 checked before installing CANN |
@@ -145,6 +150,20 @@ rm -rf ~/.cache/dev-npuir-builds
 Set `CACHE_HOME=` (empty) to run without a persistent home (uses `HOME=/tmp`
 inside the container), or point it at a different host directory.
 
+## LLVM build
+
+Triton-Ascend builds against upstream LLVM 22 (`f6ded0be...`) plus the
+`third_party/ascend/patch/llvm_patch_f6ded0b.patch` patch. Neither distributed
+prebuilt works inside this Ubuntu 20.04 image (`ubuntu-x64` needs glibc 2.32+,
+`almalinux-x64` needs a newer libstdc++), so LLVM is built locally:
+
+```bash
+./run.sh build-llvm.sh
+```
+
+The result is installed to `LLVM_INSTALL` (`../llvm-install` on the host) and
+reused by `build-wheel.sh`. Re-run with `--force` to rebuild.
+
 ## Compiler build
 
 Initialize the submodules before the first build:
@@ -161,7 +180,7 @@ root.
 
 ## Triton-Ascend wheel
 
-Requires a completed `build-ubuntu20/install`:
+Requires a completed `LLVM_INSTALL` (`build-llvm.sh`):
 
 ```bash
 ./run.sh build-wheel.sh
