@@ -22,7 +22,7 @@ export TRITON_BUILD_WITH_CCACHE="${TRITON_BUILD_WITH_CCACHE:-true}"
 export TRITON_BUILD_WITH_CLANG_LLD="false"
 export TRITON_BUILD_PROTON="OFF"
 export TRITON_WHEEL_NAME="triton-ascend"
-export TRITON_APPEND_CMAKE_ARGS="${TRITON_APPEND_CMAKE_ARGS:--DTRITON_BUILD_UT=OFF}"
+export TRITON_APPEND_CMAKE_ARGS="${TRITON_APPEND_CMAKE_ARGS:--DTRITON_BUILD_UT=OFF -DCMAKE_LINKER=/usr/bin/mold -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=mold -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=mold -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=mold}"
 
 branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || printf 'detached')"
 branch="${branch//\//-}"
