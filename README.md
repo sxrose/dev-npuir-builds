@@ -193,15 +193,11 @@ via `build-llvm.sh`:
 ./run.sh build-wheel.sh
 ```
 
-The wheel is written directly to `triton-ascend/` on the host. Its filename
-includes the current branch and commit, for example:
-
-```text
-triton_ascend-main-a1b2c3d4e5f6-3.6.0.dev....whl
-```
-
-The branch and commit are added as a PEP 440 local version suffix, so the wheel
-filename remains valid for `pip`.
+The wheel is written directly to `triton-ascend/` on the host. It is a plain
+`linux_x86_64` wheel (`3.6.0.post0+git<short-hash>`): the Ubuntu 20.04 toolchain
+(glibc 2.31, GCC 9 libstdc++) cannot be repaired to `manylinux_2_28`, so
+`IS_MANYLINUX` must stay off. Install it with `pip install <wheel>` on a target
+running a compatible glibc.
 
 The wheel is not installed in the container. It can be installed on a
 compatible target with `pip install <wheel>`. Running Triton kernels still

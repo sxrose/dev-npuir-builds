@@ -39,21 +39,17 @@ fi
 mkdir -p "$TRITON_ROOT/build"
 printf '%s\n' "$LLVM_SYSPATH" > "$LLVM_PATH_STAMP"
 
-# manylinux: auditwheel is installed in the image and IS_MANYLINUX keeps the
-# `.post0+branch.commit` suffix a single valid PEP 440 local segment.
-export IS_MANYLINUX="${IS_MANYLINUX:-1}"
-
 export TRITON_BUILD_WITH_CCACHE="${TRITON_BUILD_WITH_CCACHE:-true}"
 export TRITON_BUILD_WITH_CLANG_LLD="false"
 export TRITON_BUILD_PROTON="OFF"
 export TRITON_WHEEL_NAME="triton-ascend"
 export TRITON_APPEND_CMAKE_ARGS="${TRITON_APPEND_CMAKE_ARGS:--DTRITON_BUILD_UT=OFF -DCMAKE_LINKER=/usr/bin/mold -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=mold -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=mold -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=mold}"
 
-branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || printf 'detached')"
-branch="${branch//\//-}"
-branch="${branch//[^A-Za-z0-9_.-]/-}"
-commit="$(git rev-parse --short=12 HEAD)"
-export TRITON_WHEEL_VERSION_SUFFIX="${TRITON_WHEEL_VERSION_SUFFIX:-.post0+${branch}.${commit}}"
+# The wheel is NOT manylinux: Ubuntu 20.04 (glibc 2.31, GCC 9 libstdc++) cannot
+# be repaired to manylinux_2_28. Without IS_MANYLINUX setup appends the git hash
+# as the local version segment, so the suffix must not contain a second "+"
+# (PEP 440 allows only one). Result: 3.6.0.post0+git<short-hash>.
+export TRITON_WHEEL_VERSION_SUFFIX="${TRITON_WHEEL_VERSION_SUFFIX:-.post0}"
 
 rm -f "$TRITON_ROOT"/triton_ascend-*.whl
 "${PYTHON:-python3.11}" setup_ascend.py bdist_wheel --dist-dir "$TRITON_ROOT" "$@"
