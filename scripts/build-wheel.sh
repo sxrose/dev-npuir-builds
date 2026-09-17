@@ -28,6 +28,17 @@ set -u
 # AscendNPU-IR install is the LLVM 19.1.7 fork used only by bishengir-compile.
 export LLVM_SYSPATH="$LLVM_INSTALL"
 
+# A CMake build directory configured against a different LLVM keeps stale
+# absolute paths to that LLVM's static libs in its cache. Wipe it whenever the
+# LLVM location changes (or is unknown) so nothing links against the old one.
+LLVM_PATH_STAMP="$TRITON_ROOT/build/.llvm-syspath"
+if [[ ! -f "$LLVM_PATH_STAMP" || "$(cat "$LLVM_PATH_STAMP")" != "$LLVM_SYSPATH" ]]; then
+  printf 'LLVM path changed, cleaning %s\n' "$TRITON_ROOT/build"
+  rm -rf "$TRITON_ROOT/build"
+fi
+mkdir -p "$TRITON_ROOT/build"
+printf '%s\n' "$LLVM_SYSPATH" > "$LLVM_PATH_STAMP"
+
 # manylinux: auditwheel is installed in the image and IS_MANYLINUX keeps the
 # `.post0+branch.commit` suffix a single valid PEP 440 local segment.
 export IS_MANYLINUX="${IS_MANYLINUX:-1}"
