@@ -4,7 +4,7 @@ set -euo pipefail
 
 IR_ROOT="${IR_ROOT:-/workspace/AscendNPU-IR}"
 BUILD_DIR="${BUILD_DIR:-build-ubuntu20}"
-CANN_PATH="${CANN_PATH:-/usr/local/Ascend/cann}"
+CANN_PATH="${CANN_PATH:-${ASCEND_HOME_PATH:-/opt/Ascend/cann}}"
 
 cd "$IR_ROOT"
 exec ./build-tools/build.sh \

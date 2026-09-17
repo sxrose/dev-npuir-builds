@@ -16,7 +16,7 @@ BUILD_DIR="${BUILD_DIR:-build-ubuntu20}"
 }
 
 cd "$TRITON_ROOT"
-source /usr/local/Ascend/cann/set_env.sh
+source "${ASCEND_HOME_PATH:-/opt/Ascend/cann}/set_env.sh"
 export LLVM_SYSPATH="/workspace/AscendNPU-IR/$BUILD_DIR/install"
 export TRITON_BUILD_WITH_CCACHE="${TRITON_BUILD_WITH_CCACHE:-true}"
 export TRITON_BUILD_WITH_CLANG_LLD="false"

@@ -1,8 +1,8 @@
 # AscendNPU-IR build image
 
 Standalone Docker build environment for AscendNPU-IR and the Triton-Ascend
-wheel. The image contains the toolchain and CANN; the source trees are mounted
-from the host at runtime and are never baked into the image.
+wheel. The image contains the toolchain; CANN and the source trees live on the
+host and are mounted at runtime, so they are never baked into the image.
 
 ## Repository layout
 
@@ -13,6 +13,7 @@ the checkout can live anywhere:
 dev-npuir-builds/
   Dockerfile              # build context is the repository root
   build-image.sh          # build the builder image
+  setup-cann.sh           # install CANN into a host directory (non-root)
   run.sh                  # run a command / shell inside the image
   scripts/                # copied into the image as /usr/local/bin/*
     build-compiler.sh
@@ -21,28 +22,53 @@ dev-npuir-builds/
   README.md
 ```
 
-By default the source checkouts are expected next to the repository:
+By default the source checkouts and CANN are expected next to the repository:
 
 ```text
 ~/Work/
   dev-npuir-builds/       # this repository
   AscendNPU-IR/           # mounted as /workspace/AscendNPU-IR
   triton-ascend/          # mounted as /workspace/triton-ascend
+  cann/                   # CANN home, mounted as /opt/Ascend/cann
 ```
 
 ## Build the image
 
-The image builds AscendNPU-IR against glibc 2.31 (Ubuntu 20.04) and installs
-CANN 9.0.0 A5. Clang 18, LLD 18 and `mold` are used for both AscendNPU-IR and
-Triton-Ascend builds. Python 3.10 is installed because Triton-Ascend supports
-Python 3.9 to 3.11, while the default Ubuntu 20 Python is 3.8.
+The image builds AscendNPU-IR against glibc 2.31 (Ubuntu 20.04). Clang 18,
+LLD 18 and `mold` are used for both AscendNPU-IR and Triton-Ascend builds.
+Python 3.10 is installed because Triton-Ascend supports Python 3.9 to 3.11,
+while the default Ubuntu 20 Python is 3.8.
 
 ```bash
 ./build-image.sh
 ```
 
-The CANN installer (~2 GB) is downloaded during the image build. Its
-confirmation prompt is answered with `yes`.
+CANN is not part of the image; it is installed by `setup-cann.sh` on first use
+(see below).
+
+## CANN setup
+
+`setup-cann.sh` downloads CANN (~2 GB), caches the installer under
+`../.cann-pkg/`, and installs it into `../cann` (`CANN_HOME`). `run.sh` calls
+it automatically when `CANN_HOME/set_env.sh` is missing, so usually you do not
+need to run it by hand:
+
+```bash
+./setup-cann.sh
+```
+
+The installation runs **inside the container under your own uid, not as
+root**, with `--whitelist=toolkit`. This installs the toolkit only and never
+the driver or firmware, so no kernel modules are touched.
+
+Override the version with `CANN_URL`, and optionally enforce integrity with
+`CANN_SHA256`:
+
+```bash
+CANN_URL=https://ascend-cann-open.obs.cn-north-4.myhuaweicloud.com/CANN/CANN-9.0.0-A5/Ascend-cann_9.0.0_linux-x86_64.run \
+CANN_SHA256=<sha256> \
+./setup-cann.sh
+```
 
 ## Run
 
@@ -81,17 +107,21 @@ TRITON_ROOT=/path/to/triton-ascend \
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `IMAGE` | `ascendnpu-ir-ubuntu20-builder` | Image tag used by both scripts |
+| `IMAGE` | `ascendnpu-ir-ubuntu20-builder` | Image tag used by all scripts |
 | `IR_ROOT` | `../AscendNPU-IR` | AscendNPU-IR checkout mounted at `/workspace/AscendNPU-IR` |
 | `TRITON_ROOT` | `../triton-ascend` | Triton-Ascend checkout mounted at `/workspace/triton-ascend` |
+| `CANN_HOME` | `../cann` | CANN home mounted at `/opt/Ascend/cann` |
+| `CANN_URL` | CANN 9.0.0 A5 `.run` | Installer URL used by `setup-cann.sh` |
+| `CANN_SHA256` | empty | Optional SHA256 checked before installing CANN |
+| `CANN_PKG_DIR` | `../.cann-pkg` | Host cache for the CANN installer |
 | `BUILD_DIR` | `build-ubuntu20` | Build directory inside `IR_ROOT` |
 | `CACHE_HOME` | `~/.cache/dev-npuir-builds` | Host directory bind-mounted as the container home; empty disables it |
 
 ## Persistence
 
 The container itself is removed after every run (`docker run --rm`). This is
-intentional: the source trees and build outputs live on host bind mounts and
-survive, and the toolchain and CANN live in the image.
+intentional: the source trees, build outputs and CANN live on host bind mounts
+and survive, and the toolchain lives in the image.
 
 To keep the `ccache` cache (and the rest of the container home) across runs,
 the host directory `~/.cache/dev-npuir-builds/home` is bind-mounted at
