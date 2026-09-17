@@ -72,17 +72,13 @@ ENV CC=/usr/bin/clang-18
 ENV CXX=/usr/bin/clang++-18
 ENV PYTHON=/usr/local/bin/python3.11
 
-# CANN is installed at runtime into a host directory mounted at /opt/Ascend.
-# The install prefix must be writable by the non-root runtime user.
-RUN mkdir -p /opt/Ascend && chmod 0777 /opt/Ascend
-
 WORKDIR /workspace
 
 COPY scripts/ /usr/local/lib/ascendnpu-ir-docker/
 
 RUN install -m 0755 /usr/local/lib/ascendnpu-ir-docker/*.sh /usr/local/bin/ \
     && printf '%s\n' \
-      '[ -f /opt/Ascend/cann/set_env.sh ] && . /opt/Ascend/cann/set_env.sh' \
+      '[ -n "$ASCEND_HOME_PATH" ] && [ -f "$ASCEND_HOME_PATH/set_env.sh" ] && . "$ASCEND_HOME_PATH/set_env.sh"' \
       'alias build-compiler="/usr/local/bin/build-compiler.sh"' \
       'alias build-wheel="/usr/local/bin/build-wheel.sh"' \
       'alias pack-compiler="/usr/local/bin/pack-compiler.sh"' \

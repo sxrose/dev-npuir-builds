@@ -29,15 +29,27 @@ if [[ ! -f "$CANN_HOME/set_env.sh" ]]; then
   CANN_HOME="$CANN_HOME" IMAGE="$IMAGE" "$REPO_DIR/setup-cann.sh"
 fi
 
+# CANN's set_env.sh hardcodes its install path, so the host directory has to be
+# mounted at the very same path inside the container. Read that path back from
+# set_env.sh; fall back to the path a fresh setup-cann.sh install uses.
+CANN_CONTAINER_PATH="${CANN_CONTAINER_PATH:-}"
+if [[ -z "$CANN_CONTAINER_PATH" ]]; then
+  CANN_CONTAINER_PATH="$(
+    grep -o 'version_dirpath="[^"]*"' "$CANN_HOME/set_env.sh" \
+      | head -n1 | cut -d'"' -f2
+  )"
+  CANN_CONTAINER_PATH="${CANN_CONTAINER_PATH:-/opt/Ascend/cann}"
+fi
+
 docker_args=(
   --rm
   --user "$(id -u):$(id -g)"
-  --env ASCEND_HOME_PATH=/opt/Ascend/cann
-  --env BISHENG_COMPILER=/opt/Ascend/cann/bin
-  --env LD_LIBRARY_PATH=/opt/Ascend/cann/lib64
+  --env ASCEND_HOME_PATH="$CANN_CONTAINER_PATH"
+  --env BISHENG_COMPILER="$CANN_CONTAINER_PATH/bin"
+  --env LD_LIBRARY_PATH="$CANN_CONTAINER_PATH/lib64"
   --env IR_ROOT=/workspace/AscendNPU-IR
   --env TRITON_ROOT=/workspace/triton-ascend
-  --volume "$CANN_HOME:/opt/Ascend/cann"
+  --volume "$CANN_HOME:$CANN_CONTAINER_PATH"
   --volume "$IR_ROOT:/workspace/AscendNPU-IR"
   --volume "$TRITON_ROOT:/workspace/triton-ascend"
   --workdir /workspace/AscendNPU-IR
