@@ -2,16 +2,16 @@
 
 set -euo pipefail
 
-IR_ROOT="${IR_ROOT:-/workspace/AscendNPU-IR}"
 TRITON_ROOT="${TRITON_ROOT:-/workspace/triton-ascend}"
-BUILD_DIR="${BUILD_DIR:-build-ubuntu20}"
+LLVM_INSTALL="${LLVM_INSTALL:-/workspace/llvm-install}"
 
 [[ -d "$TRITON_ROOT" ]] || {
   printf 'Triton-Ascend checkout not found: %s\n' "$TRITON_ROOT" >&2
   exit 1
 }
-[[ -d "$IR_ROOT/$BUILD_DIR/install" ]] || {
-  printf 'AscendNPU-IR install not found: %s\n' "$IR_ROOT/$BUILD_DIR/install" >&2
+[[ -f "$LLVM_INSTALL/bin/mlir-tblgen" ]] || {
+  printf 'LLVM install not found: %s/bin/mlir-tblgen\n' "$LLVM_INSTALL" >&2
+  printf 'Run build-llvm first (./run.sh build-llvm.sh).\n' >&2
   exit 1
 }
 
@@ -20,16 +20,11 @@ set +u
 source "${ASCEND_HOME_PATH:-/opt/Ascend/cann}/set_env.sh"
 set -u
 
-# The Triton extension builds against upstream LLVM 22 (f6ded0b8 +
-# llvm_patch_f6ded0b.patch); setup downloads the matching prebuilt when
-# LLVM_SYSPATH is unset. The AscendNPU-IR install is the LLVM 19.1.7 fork used
-# only to build bishengir-compile and is incompatible with Triton.
-unset LLVM_SYSPATH
-
-# Ubuntu 20.04 has glibc 2.31, but the ubuntu-x64 prebuilt needs glibc 2.32+.
-# The almalinux-x64 build targets glibc 2.28 and runs here (verified: mlir-tblgen
-# needs at most GLIBC_2.16 / GLIBCXX_3.4.21).
-export TRITON_LLVM_SYSTEM_SUFFIX="${TRITON_LLVM_SYSTEM_SUFFIX:-almalinux-x64}"
+# Build against the locally built upstream LLVM 22 (f6ded0b8 + llvm_patch).
+# Neither prebuilt works on Ubuntu 20.04: ubuntu-x64 needs glibc 2.32+, and
+# almalinux-x64 needs a newer libstdc++ (__glibcxx_assert_fail). The
+# AscendNPU-IR install is the LLVM 19.1.7 fork used only by bishengir-compile.
+export LLVM_SYSPATH="$LLVM_INSTALL"
 
 # manylinux: auditwheel is installed in the image and IS_MANYLINUX keeps the
 # `.post0+branch.commit` suffix a single valid PEP 440 local segment.

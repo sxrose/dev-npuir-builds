@@ -80,6 +80,7 @@ RUN install -m 0755 /usr/local/lib/ascendnpu-ir-docker/*.sh /usr/local/bin/ \
     && printf '%s\n' \
       '[ -n "$ASCEND_HOME_PATH" ] && [ -f "$ASCEND_HOME_PATH/set_env.sh" ] && . "$ASCEND_HOME_PATH/set_env.sh"' \
       'alias build-compiler="/usr/local/bin/build-compiler.sh"' \
+      'alias build-llvm="/usr/local/bin/build-llvm.sh"' \
       'alias build-wheel="/usr/local/bin/build-wheel.sh"' \
       'alias pack-compiler="/usr/local/bin/pack-compiler.sh"' \
       >> /etc/bash.bashrc
