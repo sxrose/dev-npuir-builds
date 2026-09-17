@@ -161,8 +161,12 @@ prebuilt works inside this Ubuntu 20.04 image (`ubuntu-x64` needs glibc 2.32+,
 ./run.sh build-llvm.sh
 ```
 
-The result is installed to `LLVM_INSTALL` (`../llvm-install` on the host) and
-reused by `build-wheel.sh`. Re-run with `--force` to rebuild.
+The source revision is read from `triton-ascend/cmake/llvm-hash.txt`: the
+checkout is cloned/checked out to that commit (and updated when it changes),
+then patched with the matching `llvm_patch_*.patch`. The result is installed to
+`LLVM_INSTALL` (`../llvm-install` on the host) and reused by `build-wheel.sh`.
+The script always syncs and builds; pass `--skip-if-fresh` to make it a no-op
+when `LLVM_INSTALL` already matches the pinned revision.
 
 ## Compiler build
 
@@ -180,7 +184,9 @@ root.
 
 ## Triton-Ascend wheel
 
-Requires a completed `LLVM_INSTALL` (`build-llvm.sh`):
+If `LLVM_INSTALL` is missing or does not match the revision pinned in
+`triton-ascend/cmake/llvm-hash.txt`, `build-wheel.sh` builds it automatically
+via `build-llvm.sh`:
 
 ```bash
 ./run.sh build-wheel.sh
