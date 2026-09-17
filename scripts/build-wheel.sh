@@ -9,20 +9,13 @@ LLVM_INSTALL="${LLVM_INSTALL:-/workspace/llvm-install}"
   printf 'Triton-Ascend checkout not found: %s\n' "$TRITON_ROOT" >&2
   exit 1
 }
-# The installed LLVM must match the commit pinned by this Triton checkout. If
-# it does not, sync the source to that commit and build it automatically.
-LLVM_REV="$(tr -d '[:space:]' < "$TRITON_ROOT/cmake/llvm-hash.txt")"
-LLVM_STAMP="$LLVM_INSTALL/.llvm-rev"
-if [[ ! -f "$LLVM_INSTALL/bin/mlir-tblgen" || ! -f "$LLVM_STAMP" || \
-      "$(cat "$LLVM_STAMP")" != "$LLVM_REV" ]]; then
-  command -v build-llvm.sh >/dev/null 2>&1 || {
-    printf 'build-llvm.sh not found; run ./run.sh build-llvm.sh first\n' >&2
-    exit 1
-  }
-  printf 'LLVM at %s does not match cmake/llvm-hash.txt (%s), building it ...\n' \
-    "$LLVM_INSTALL" "$LLVM_REV"
-  build-llvm.sh
-fi
+# Sync the LLVM install with the commit/options pinned by this Triton checkout
+# (build-llvm.sh checks the stamp and is a no-op when it already matches).
+command -v build-llvm.sh >/dev/null 2>&1 || {
+  printf 'build-llvm.sh not found; run ./run.sh build-llvm.sh first\n' >&2
+  exit 1
+}
+build-llvm.sh --skip-if-fresh
 
 cd "$TRITON_ROOT"
 set +u

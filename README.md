@@ -166,7 +166,8 @@ checkout is cloned/checked out to that commit (and updated when it changes),
 then patched with the matching `llvm_patch_*.patch`. The result is installed to
 `LLVM_INSTALL` (`../llvm-install` on the host) and reused by `build-wheel.sh`.
 The script always syncs and builds; pass `--skip-if-fresh` to make it a no-op
-when `LLVM_INSTALL` already matches the pinned revision.
+when `LLVM_INSTALL` already matches the pinned revision and build options
+(zlib/zstd are disabled so lld's config does not require `ZLIB::ZLIB`).
 
 ## Compiler build
 

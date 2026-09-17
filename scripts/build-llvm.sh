@@ -51,11 +51,36 @@ fi
   exit 1
 }
 
-# By default always sync and build; --skip-if-fresh makes the step a no-op when
-# the installed LLVM already matches the requested revision.
+# ZLIB/ZSTD are disabled: lld's exported config references the ZLIB::ZLIB
+# imported target, but Triton only does find_package(LLD) without
+# find_package(ZLIB), so the target must not be required.
+CMAKE_ARGS=(
+  "-DCMAKE_C_COMPILER=/usr/bin/clang-18"
+  "-DCMAKE_CXX_COMPILER=/usr/bin/clang++-18"
+  "-DCMAKE_LINKER=/usr/bin/mold"
+  "-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=mold"
+  "-DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=mold"
+  "-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=mold"
+  "-DCMAKE_BUILD_TYPE=Release"
+  "-DLLVM_ENABLE_ASSERTIONS=ON"
+  "-DLLVM_ENABLE_PROJECTS=mlir;llvm;lld"
+  "-DLLVM_TARGETS_TO_BUILD=host;NVPTX;AMDGPU"
+  "-DLLVM_INSTALL_UTILS=ON"
+  "-DLLVM_ENABLE_ZLIB=OFF"
+  "-DLLVM_ENABLE_ZSTD=OFF"
+  "-DCMAKE_INSTALL_PREFIX=$LLVM_INSTALL"
+)
+
+# The stamp covers both the revision and the build options, so changing either
+# forces a rebuild.
+CONFIG_SIG="$(printf '%s\n' "${CMAKE_ARGS[@]}" | sha256sum | cut -c1-12)"
 STAMP="$LLVM_INSTALL/.llvm-rev"
+STAMP_VALUE="$LLVM_REV $CONFIG_SIG"
+
+# By default always sync and build; --skip-if-fresh makes the step a no-op when
+# the installed LLVM already matches the requested revision and options.
 if [[ "$SKIP_IF_FRESH" -eq 1 && -f "$STAMP" && -f "$LLVM_INSTALL/bin/mlir-tblgen" && \
-      "$(cat "$STAMP")" == "$LLVM_REV" ]]; then
+      "$(cat "$STAMP")" == "$STAMP_VALUE" ]]; then
   printf 'LLVM %s already installed at %s, skipping\n' "$LLVM_REV" "$LLVM_INSTALL"
   exit 0
 fi
@@ -89,21 +114,9 @@ else
   git -C "$LLVM_SRC" apply "$LLVM_PATCH"
 fi
 
-cmake -G Ninja -S "$LLVM_SRC/llvm" -B "$BUILD_DIR" \
-  -DCMAKE_C_COMPILER=/usr/bin/clang-18 \
-  -DCMAKE_CXX_COMPILER=/usr/bin/clang++-18 \
-  -DCMAKE_LINKER=/usr/bin/mold \
-  -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=mold \
-  -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=mold \
-  -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=mold \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DLLVM_ENABLE_ASSERTIONS=ON \
-  -DLLVM_ENABLE_PROJECTS="mlir;llvm;lld" \
-  -DLLVM_TARGETS_TO_BUILD="host;NVPTX;AMDGPU" \
-  -DLLVM_INSTALL_UTILS=ON \
-  -DCMAKE_INSTALL_PREFIX="$LLVM_INSTALL"
+cmake -G Ninja -S "$LLVM_SRC/llvm" -B "$BUILD_DIR" "${CMAKE_ARGS[@]}"
 
 ninja -C "$BUILD_DIR" install
 
-printf '%s\n' "$LLVM_REV" > "$STAMP"
+printf '%s\n' "$STAMP_VALUE" > "$STAMP"
 printf 'Installed LLVM %s to %s\n' "$LLVM_REV" "$LLVM_INSTALL"
