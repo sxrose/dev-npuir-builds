@@ -7,10 +7,12 @@ IMAGE="${IMAGE:-ascendnpu-ir-ubuntu20-builder}"
 
 IR_ROOT="${IR_ROOT:-$REPO_DIR/../AscendNPU-IR}"
 TRITON_ROOT="${TRITON_ROOT:-$REPO_DIR/../triton-ascend}"
+CANN_HOME="${CANN_HOME-$REPO_DIR/../cann}"
 CACHE_HOME="${CACHE_HOME-$HOME/.cache/dev-npuir-builds}"
 
 IR_ROOT="$(realpath "$IR_ROOT")"
 TRITON_ROOT="$(realpath "$TRITON_ROOT")"
+CANN_HOME="$(realpath -m "$CANN_HOME")"
 
 [[ -d "$IR_ROOT" ]] || {
   printf 'AscendNPU-IR checkout not found: %s\n' "$IR_ROOT" >&2
@@ -23,12 +25,19 @@ TRITON_ROOT="$(realpath "$TRITON_ROOT")"
   exit 1
 }
 
+if [[ ! -f "$CANN_HOME/set_env.sh" ]]; then
+  CANN_HOME="$CANN_HOME" IMAGE="$IMAGE" "$REPO_DIR/setup-cann.sh"
+fi
+
 docker_args=(
   --rm
   --user "$(id -u):$(id -g)"
-  --env ASCEND_HOME_PATH=/usr/local/Ascend/cann
+  --env ASCEND_HOME_PATH=/opt/Ascend/cann
+  --env BISHENG_COMPILER=/opt/Ascend/cann/bin
+  --env LD_LIBRARY_PATH=/opt/Ascend/cann/lib64
   --env IR_ROOT=/workspace/AscendNPU-IR
   --env TRITON_ROOT=/workspace/triton-ascend
+  --volume "$CANN_HOME:/opt/Ascend/cann"
   --volume "$IR_ROOT:/workspace/AscendNPU-IR"
   --volume "$TRITON_ROOT:/workspace/triton-ascend"
   --workdir /workspace/AscendNPU-IR

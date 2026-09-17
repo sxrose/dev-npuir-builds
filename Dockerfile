@@ -1,7 +1,6 @@
 FROM ubuntu:20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG CANN_URL=https://ascend-cann-open.obs.cn-north-4.myhuaweicloud.com/CANN/CANN-9.0.0-A5/Ascend-cann_9.0.0_linux-x86_64.run
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
@@ -39,14 +38,9 @@ ENV CC=/usr/bin/clang-18
 ENV CXX=/usr/bin/clang++-18
 ENV PYTHON=/usr/bin/python3.10
 
-RUN wget --progress=dot:giga --output-document=/tmp/Ascend-cann.run "$CANN_URL" \
-    && yes | bash /tmp/Ascend-cann.run --full --install-path=/usr/local/Ascend \
-    && rm -f /tmp/Ascend-cann.run
-
-ENV ASCEND_HOME_PATH=/usr/local/Ascend/cann
-ENV BISHENG_COMPILER=/usr/local/Ascend/cann/bin
-ENV PATH="/usr/local/Ascend/cann/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/usr/local/Ascend/cann/lib64"
+# CANN is installed at runtime into a host directory mounted at /opt/Ascend.
+# The install prefix must be writable by the non-root runtime user.
+RUN mkdir -p /opt/Ascend && chmod 0777 /opt/Ascend
 
 WORKDIR /workspace
 
@@ -54,6 +48,7 @@ COPY scripts/ /usr/local/lib/ascendnpu-ir-docker/
 
 RUN install -m 0755 /usr/local/lib/ascendnpu-ir-docker/*.sh /usr/local/bin/ \
     && printf '%s\n' \
+      '[ -f /opt/Ascend/cann/set_env.sh ] && . /opt/Ascend/cann/set_env.sh' \
       'alias build-compiler="/usr/local/bin/build-compiler.sh"' \
       'alias build-wheel="/usr/local/bin/build-wheel.sh"' \
       'alias pack-compiler="/usr/local/bin/pack-compiler.sh"' \
