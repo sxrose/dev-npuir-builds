@@ -43,8 +43,9 @@ docker run --rm \
   --env HOME=/tmp \
   --volume "$CANN_HOME:/opt/Ascend/cann" \
   --volume "$PKG_FILE:/tmp/cann.run:ro" \
+  --entrypoint /bin/bash \
   "$IMAGE" \
-  /bin/bash -c 'bash /tmp/cann.run --install --whitelist=toolkit --install-path=/opt/Ascend --quiet'
+  -c 'bash /tmp/cann.run --install --whitelist=toolkit --install-path=/opt/Ascend --quiet'
 
 [[ -f "$CANN_HOME/set_env.sh" ]] || {
   printf 'Installation finished but %s/set_env.sh is missing.\n' "$CANN_HOME" >&2
