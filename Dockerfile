@@ -50,7 +50,7 @@ ENV LD_LIBRARY_PATH="/usr/local/Ascend/cann/lib64"
 
 WORKDIR /workspace
 
-COPY docker/scripts/ /usr/local/lib/ascendnpu-ir-docker/
+COPY scripts/ /usr/local/lib/ascendnpu-ir-docker/
 
 RUN install -m 0755 /usr/local/lib/ascendnpu-ir-docker/*.sh /usr/local/bin/ \
     && printf '%s\n' \
