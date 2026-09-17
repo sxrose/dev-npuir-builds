@@ -1,38 +1,58 @@
-# Docker Build Environments
+# AscendNPU-IR build image
 
-## Ubuntu 20 compiler build
+Standalone Docker build environment for AscendNPU-IR and the Triton-Ascend
+wheel. The image contains the toolchain and CANN; the source trees are mounted
+from the host at runtime and are never baked into the image.
 
-The Ubuntu 20 image builds AscendNPU-IR against glibc 2.31. The source tree
-and build output remain on the host:
+## Repository layout
 
-```bash
-docker build -f docker/Dockerfile.ubuntu20 \
-  -t ascendnpu-ir-ubuntu20-builder .
+The repository is self-contained. The scripts resolve their own location, so
+the checkout can live anywhere:
 
-./docker/build-ubuntu20.sh --build-type Release
+```text
+dev-npuir-builds/
+  Dockerfile              # build context is the repository root
+  build-image.sh          # build the builder image
+  run.sh                  # run a command / shell inside the image
+  scripts/                # copied into the image as /usr/local/bin/*
+    build-compiler.sh
+    build-wheel.sh
+    pack-compiler.sh
+  README.md
 ```
 
-For the first build, initialize the submodules before running the script:
+By default the source checkouts are expected next to the repository:
 
-```bash
-git submodule update --init --recursive
-./docker/build-ubuntu20.sh --build-type Release --apply-patches
+```text
+~/Work/
+  dev-npuir-builds/       # this repository
+  AscendNPU-IR/           # mounted as /workspace/AscendNPU-IR
+  triton-ascend/          # mounted as /workspace/triton-ascend
 ```
 
-The script also enables the BiShengIR template library and uses the BiSheng
-compiler installed from CANN 9.0.0 A5. The installer is downloaded during the
-image build. Its confirmation prompt is answered with `yes`.
+## Build the image
 
-The image installs Python 3.10 because Triton-Ascend supports Python 3.9 to
-3.11, while the default Ubuntu 20 Python is 3.8.
+The image builds AscendNPU-IR against glibc 2.31 (Ubuntu 20.04) and installs
+CANN 9.0.0 A5. Clang 18, LLD 18 and `mold` are used for both AscendNPU-IR and
+Triton-Ascend builds. Python 3.10 is installed because Triton-Ascend supports
+Python 3.9 to 3.11, while the default Ubuntu 20 Python is 3.8.
 
-Clang 18 and LLD 18 are installed from the official LLVM repository. `mold` is
-also installed and used as the linker for both AscendNPU-IR and Triton-Ascend
-builds. This avoids relying on the slower default linker.
+```bash
+./build-image.sh
+```
 
-The generated installation is in `build-ubuntu20/install`.
+The CANN installer (~2 GB) is downloaded during the image build. Its
+confirmation prompt is answered with `yes`.
 
-The image provides these interactive shell aliases:
+## Run
+
+Start an interactive shell with both checkouts mounted:
+
+```bash
+./run.sh
+```
+
+Inside the container these aliases are available:
 
 ```text
 build-compiler  # build AscendNPU-IR and the template library
@@ -40,79 +60,94 @@ build-wheel     # build a Triton-Ascend wheel
 pack-compiler   # create a .tar.zst with bishengir-compile and *.bc
 ```
 
-Start an interactive container with both checkouts mounted:
+Or run a single command without an interactive shell:
 
 ```bash
-docker run --rm -it \
-  --user "$(id -u):$(id -g)" \
-  --env HOME=/tmp \
-  --volume "$PWD:/workspace/AscendNPU-IR" \
-  --volume "$PWD/../triton-ascend:/workspace/triton-ascend" \
-  --workdir /workspace/AscendNPU-IR \
-  ascendnpu-ir-ubuntu20-builder
+./run.sh build-compiler.sh --build-type Release
+./run.sh build-wheel.sh
+./run.sh pack-compiler.sh
 ```
 
-Inside the container, run for example:
+## Source locations
+
+`run.sh` finds the checkouts next to the repository by default. Override them
+with environment variables:
 
 ```bash
-build-compiler --build-type Release
-build-wheel
-pack-compiler
+IR_ROOT=/path/to/AscendNPU-IR \
+TRITON_ROOT=/path/to/triton-ascend \
+./run.sh build-wheel.sh
 ```
 
-The archive contains `bin/bishengir-compile` and `lib/*.bc` with paths relative
-to the archive root.
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `IMAGE` | `ascendnpu-ir-ubuntu20-builder` | Image tag used by both scripts |
+| `IR_ROOT` | `../AscendNPU-IR` | AscendNPU-IR checkout mounted at `/workspace/AscendNPU-IR` |
+| `TRITON_ROOT` | `../triton-ascend` | Triton-Ascend checkout mounted at `/workspace/triton-ascend` |
+| `BUILD_DIR` | `build-ubuntu20` | Build directory inside `IR_ROOT` |
+| `CACHE_HOME` | `~/.cache/dev-npuir-builds` | Host directory bind-mounted as the container home; empty disables it |
+
+## Persistence
+
+The container itself is removed after every run (`docker run --rm`). This is
+intentional: the source trees and build outputs live on host bind mounts and
+survive, and the toolchain and CANN live in the image.
+
+To keep the `ccache` cache (and the rest of the container home) across runs,
+the host directory `~/.cache/dev-npuir-builds/home` is bind-mounted at
+`/home/user` and used as `HOME`, so ccache lands in `/home/user/.ccache` inside
+the container and in `~/.cache/dev-npuir-builds/home/.ccache` on the host. It
+survives `--rm`, is private to the host user, and is never shared with other
+users on the machine. No docker volume is used.
+
+Reset the cache by removing the directory:
+
+```bash
+rm -rf ~/.cache/dev-npuir-builds
+```
+
+Set `CACHE_HOME=` (empty) to run without a persistent home (uses `HOME=/tmp`
+inside the container), or point it at a different host directory.
+
+## Compiler build
+
+Initialize the submodules before the first build:
+
+```bash
+git -C "$IR_ROOT" submodule update --init --recursive
+./run.sh build-compiler.sh --build-type Release --apply-patches
+```
+
+The generated installation is in `build-ubuntu20/install`. `pack-compiler.sh`
+packs `bin/bishengir-compile` and `lib/*.bc` into
+`build-ubuntu20/bishengir-compiler.tar.zst` with paths relative to the archive
+root.
 
 ## Triton-Ascend wheel
 
-The Triton-Ascend checkout is expected next to this repository by default:
-
-```text
-~/Work/AscendNPU-IR
-~/Work/triton-ascend
-```
-
-Build the AscendNPU-IR image first, then start a container with both
-checkouts mounted:
+Requires a completed `build-ubuntu20/install`:
 
 ```bash
-docker run --rm -it \
-  --user "$(id -u):$(id -g)" \
-  --env HOME=/tmp \
-  --volume "$PWD:/workspace/AscendNPU-IR" \
-  --volume "$PWD/../triton-ascend:/workspace/triton-ascend" \
-  --workdir /workspace/AscendNPU-IR \
-  ascendnpu-ir-ubuntu20-builder
+./run.sh build-wheel.sh
 ```
 
-Inside the container, run:
-
-```bash
-build-wheel
-```
-
-The wheel is written directly to `~/Work/triton-ascend`. Its filename includes
-the current branch and commit, for example:
+The wheel is written directly to `triton-ascend/` on the host. Its filename
+includes the current branch and commit, for example:
 
 ```text
 triton_ascend-main-a1b2c3d4e5f6-3.6.0.dev....whl
 ```
 
-The branch and commit are added as a PEP 440 local version suffix, so the
-wheel filename remains valid for `pip`.
-
-The alias sets `LLVM_SYSPATH` to the AscendNPU-IR installation and does not
-install the wheel in the container.
+The branch and commit are added as a PEP 440 local version suffix, so the wheel
+filename remains valid for `pip`.
 
 The wheel is not installed in the container. It can be installed on a
-compatible target with
-`pip install <wheel>`. Running Triton kernels still requires matching CANN,
-TorchNPU, driver, and Ascend hardware on the target host.
+compatible target with `pip install <wheel>`. Running Triton kernels still
+requires matching CANN, TorchNPU, driver, and Ascend hardware on the target
+host.
 
-For a different AscendNPU-IR build directory, set `BUILD_DIR` inside the
-container:
+For a different AscendNPU-IR build directory, set `BUILD_DIR`:
 
 ```bash
-IR_BUILD_DIR=my-build \
-BUILD_DIR=my-build build-wheel
+BUILD_DIR=my-build ./run.sh build-wheel.sh
 ```
