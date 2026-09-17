@@ -36,8 +36,10 @@ By default the source checkouts and CANN are expected next to the repository:
 
 The image builds AscendNPU-IR against glibc 2.31 (Ubuntu 20.04). Clang 18,
 LLD 18 and `mold` are used for both AscendNPU-IR and Triton-Ascend builds.
-Python 3.10 is installed because Triton-Ascend supports Python 3.9 to 3.11,
-while the default Ubuntu 20 Python is 3.8.
+Python 3.11 (the latest supported by Triton-Ascend) is built from the official
+CPython source tarball and verified against a pinned SHA256
+(`PYTHON_VERSION`/`PYTHON_SHA256`), because Ubuntu 20.04 ships only Python 3.8
+and the third-party deadsnakes PPA no longer builds for focal.
 
 `mold` is not packaged for Ubuntu 20.04, so the official release tarball is
 downloaded and verified against a pinned SHA256 (`MOLD_VERSION`/`MOLD_SHA256`

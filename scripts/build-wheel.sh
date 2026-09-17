@@ -31,6 +31,6 @@ commit="$(git rev-parse --short=12 HEAD)"
 export TRITON_WHEEL_VERSION_SUFFIX="${TRITON_WHEEL_VERSION_SUFFIX:-.post0+${branch}.${commit}}"
 
 rm -f "$TRITON_ROOT"/triton_ascend-*.whl
-python3.10 setup_ascend.py bdist_wheel --dist-dir "$TRITON_ROOT" "$@"
+"${PYTHON:-python3.11}" setup_ascend.py bdist_wheel --dist-dir "$TRITON_ROOT" "$@"
 find "$TRITON_ROOT" -maxdepth 1 -type f -name 'triton_ascend-*.whl' \
   -printf 'Created %p\n'
